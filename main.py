@@ -1,4 +1,4 @@
-import time, sys, os, platform, util, threading, getpass, json, random
+import time, sys, os, platform, util, getpass, json, random
 from datetime import datetime, timedelta
 from database import Database as db
 
@@ -151,7 +151,7 @@ def getWalletPassword():
 
     walletPass = getpass.getpass(prompt='Enter the wallet password: ')
     try:
-        util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} walletpassphrase {walletPass} 10")
+        util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} walletpassphrase {walletPass} 1")
         WALLETPASSWORD = walletPass
     except:
         print(f"Invalid password! Please try again later.")
@@ -535,7 +535,7 @@ def processJobs():
             print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
             db().setNextZap(jobID, int(timeNow + 300))
             return
-        if txAnon and not checkUnspent(txAnon, True):
+        if txAnon and not checkUnspent(txAnon, True) and pendingAnon > 0:
             print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
             db().setNextZap(jobID, int(timeNow + 300))
             return
@@ -553,10 +553,11 @@ def processJobs():
                     print(f"Sending {zapPub} Ghost to Anon from Public.")
                     txid = convertPublicToAnon(zapPub)
                     zapLog("P2A", f"Sent {zapPub} GHOST to ANON from PUBLIC\nTXID: {txid}")
+                    db().setTxidAnon(jobID, txid)
                     db().setLastZap(jobID, timeNow)
                     db().setNextZap(jobID, int(timeNow+nextTime))
                     print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
-                elif availablePublic < MINZAP and gvr or jobID in [3, 6]:
+                elif availablePublic < MINZAP and gvr or jobID in [3, 6] and gvr:
                     if availableAnon >= 20001:
                         print(f"Sending 20,001 Ghost to Public from Anon.")
                         txid = convertAnonToPublic(round(float(20001), 8))
@@ -597,7 +598,7 @@ def processJobs():
                         db().setNextZap(jobID, int(timeNow + 300))
                         print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
 
-                elif availablePublic < MINZAP and not gvr:
+                elif availablePublic < MINZAP and not gvr or jobID in [3, 6] and not gvr:
                     if availableAnon >= 1500:
                         print(f"Zapping 1500 Ghost from Anon.")
                         txid = zapFromAnon(round(float(1500), 8))
@@ -642,9 +643,10 @@ def processJobs():
                         print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
 
                     elif availableAnon >= 20001:
-                        print(f"Sending 20,001 Ghost to Anon from Public.")
+                        print(f"Sending 20,001 Ghost to Public from Anon.")
                         txid = convertAnonToPublic(round(float(20001), 8))
                         zapLog("A2P", f"Sent 20001 GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobID, None)
                         db().setTxid(jobID, txid)
                         db().setLastZap(jobID, timeNow)
                         db().setNextZap(jobID, int(timeNow + 300))
@@ -653,6 +655,7 @@ def processJobs():
                         print(f"Sending {availableAnon} Ghost to Anon from Public.")
                         txid = convertAnonToPublic(round(float(availableAnon), 8))
                         zapLog("A2P", f"Sent {availableAnon} GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobID, None)
                         db().setTxid(jobID, txid)
                         db().setLastZap(jobID, timeNow)
                         db().setNextZap(jobID, int(timeNow + 300))
@@ -802,6 +805,14 @@ def menu():
         print("\n")
         print(f"Available Public: {getAvailablePublic()}")
         print(f"Available Anon: {getAvailableAnon()}")
+        wallet = db().getWalletName()
+        if wallet == "":
+            wallet = "[Default Wallet]"
+        print(f"Current Wallet: {wallet}")
+        print("\n")
+        print(f"7: Change Wallet")
+        print(f"8: Set new Extended Public Key")
+        print(f"9: Exit")
         print("\n")
         ans = input(f"Please enter the number of the task you would like to start: ")
 
@@ -823,6 +834,18 @@ def menu():
         elif ans == '6':
             setJob(int(ans))
             break
+        elif ans == '7':
+            db().setWalletName(None)
+            checkWallet()
+            if isEncrypted():
+                print(f"Encrypted wallet found!")
+                getWalletPassword()
+        elif ans == '8':
+            db().setExtKey(None)
+            getExtKey()
+        elif ans == '9':
+            print(f"Goodbye")
+            sys.exit()
         else:
             print("Invalid Response.")
             input("Press Enter to continue...")
@@ -862,7 +885,10 @@ def start():
         sys.exit()
     print(f"Checking for valid wallet...")
     if checkWallet():
-        print(f"Valid wallet {db().getWalletName()} found!")
+        wallet = db().getWalletName()
+        if wallet == "":
+            wallet = "[Default Wallet]"
+        print(f"Valid wallet {wallet} found!")
     if isEncrypted():
         print(f"Encrypted wallet found!")
         getWalletPassword()
@@ -892,8 +918,5 @@ def start():
         menu()
 
 
-
-
 if __name__ == '__main__':
-    #processJobs()
     start()
