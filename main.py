@@ -2,7 +2,7 @@ import time, sys, os, platform, util, getpass, json, random, secrets
 from datetime import datetime, timedelta
 from database import Database as db
 
-VERSION = "v0.1"
+VERSION = "v0.2"
 WALLETPASSWORD = None
 MINZAP = 0.1
 MINTIME = int(60*30) # 30 minutes Int to insure whole number
