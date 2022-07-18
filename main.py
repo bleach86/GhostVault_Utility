@@ -1,4 +1,4 @@
-import time, sys, os, platform, util, getpass, json, random
+import time, sys, os, platform, util, getpass, json, random, secrets
 from datetime import datetime, timedelta
 from database import Database as db
 
@@ -215,6 +215,8 @@ def zapFromPublic(amount, gvr=False, inputs=[]):
 
     output = []
     if gvr:
+        jobID = db().getJobs()[0][11]
+        gvrAddr(jobID, spendAddr)
         zapPart = amount
         while zapPart > 0:
             if zapPart >= 1500:
@@ -342,14 +344,20 @@ def clear():
 
 def zapLog(logType, logMsg):
     with open("zap.log", "a") as f:
-        f.write(f"{datetime.utcnow()} {logType}: {logMsg}\n")
+        f.write(f"{datetime.now()} {logType}: {logMsg}\n")
 
 
-def setJob(jobID):
+def gvrAddr(jobID, addr):
+    with open(f"{jobID}_GVR_Addresses.txt", "a") as f:
+        f.write(f"{addr}\n")
+
+
+def setJob(jobType):
     clear()
     print(f"Job Setup\n\n")
+    jobID = secrets.token_urlsafe(4)
 
-    if jobID in [1, 2, 4, 5]:
+    if jobType in [1, 2, 4, 5]:
         while True:
             print(f"GVR Mode will ensure that your zaps are done in multiples of 20k.\n")
             ans = input(f"Would you like to enable GVR mode y/N: ")
@@ -361,39 +369,40 @@ def setJob(jobID):
                 break
             elif ans == "y":
                 print("GVR Mode Active")
+                print(f"Addresses used for GVR zaps will be logged {os.getcwd()}/{jobID}_GVR_Addresses.txt")
                 gvr = True
                 break
             else:
                 print("Invalid Response.")
                 input("Press Enter to continue...")
 
-    if jobID <= 3:
-        if jobID == 1:
+    if jobType <= 3:
+        if jobType == 1:
             totalZap = getAvailablePublic() + getAvailableAnon()
             if totalZap < MINZAP:
                 print(f"Balance too low to zap!")
                 sys.exit()
-            print(f"Zapping {totalZap} GHOST from Public and Anon...")
-            db().newJob(1, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), getAvailableAnon())
+            print(f"Setting job {jobID} to zap {totalZap} GHOST from Public and Anon...")
+            db().newJob(1, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), getAvailableAnon(), jobID)
 
-        elif jobID == 2:
+        elif jobType == 2:
             totalZap = getAvailablePublic()
             if totalZap < MINZAP:
                 print(f"Balance too low to zap!")
                 sys.exit()
-            print(f"Zapping {totalZap} GHOST from Public..")
-            db().newJob(2, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), 0)
+            print(f"Setting job {jobID} to zap {totalZap} GHOST from Public..")
+            db().newJob(2, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), 0, jobID)
 
-        elif jobID == 3:
+        elif jobType == 3:
             totalZap = getAvailableAnon()
             if totalZap < MINZAP:
                 print(f"Balance too low to zap!")
                 sys.exit()
-            print(f"Zapping {totalZap} GHOST from Anon..")
-            db().newJob(3, totalZap, 0, gvr, 0, 0, 1, 0, getAvailableAnon())
-    elif jobID <= 6 and jobID >= 4:
+            print(f"Setting job {jobID} to zap {totalZap} GHOST from Anon..")
+            db().newJob(3, totalZap, 0, gvr, 0, 0, 1, 0, getAvailableAnon(), jobID)
+    elif jobType <= 6 and jobType >= 4:
 
-        if jobID == 4:
+        if jobType == 4:
             while True:
                 print(f"Available Public: {getAvailablePublic()}")
                 print("\n")
@@ -415,7 +424,6 @@ def setJob(jobID):
                     input("Press Enter to continue...")
                 elif ans <= getAvailablePublic():
                     zapPub = ans
-                    print(f"Zapping {zapPub} Ghost from Public.")
                     break
 
             while True:
@@ -439,13 +447,12 @@ def setJob(jobID):
                     input("Press Enter to continue...")
                 elif ans <= getAvailableAnon():
                     zapAnon = ans
-                    print(f"Zapping {zapAnon} Ghost from Anon.")
                     break
             totalZap = round(zapAnon + zapPub, 8)
-            print(f"Zapping {totalZap} Ghost from Public and Anon")
-            db().newJob(4, totalZap, 0, gvr, 0, 0, 1, zapPub, zapAnon)
+            print(f"Setting job {jobID} to zap {totalZap} Ghost from Public and Anon")
+            db().newJob(4, totalZap, 0, gvr, 0, 0, 1, zapPub, zapAnon, jobID)
 
-        elif jobID == 5:
+        elif jobType == 5:
             while True:
                 print(f"Available Public: {getAvailablePublic()}")
                 print("\n")
@@ -470,10 +477,10 @@ def setJob(jobID):
                     break
 
             totalZap = round(zapPub, 8)
-            print(f"Zapping {totalZap} Ghost from Public")
-            db().newJob(5, totalZap, 0, gvr, 0, 0, 1, zapPub, 0)
+            print(f"Setting job {jobID} to zap {totalZap} Ghost from Public")
+            db().newJob(5, totalZap, 0, gvr, 0, 0, 1, zapPub, 0, jobID)
 
-        elif jobID == 6:
+        elif jobType == 6:
             while True:
                 print(f"Available Anon: {getAvailableAnon()}")
                 print("\n")
@@ -495,12 +502,11 @@ def setJob(jobID):
                     input("Press Enter to continue...")
                 elif ans <= getAvailableAnon():
                     zapAnon = ans
-                    print(f"Zapping {zapAnon} Ghost from Anon.")
                     break
 
             totalZap = round(zapAnon, 8)
-            print(f"Zapping {totalZap} Ghost from Anon")
-            db().newJob(6, totalZap, 0, gvr, 0, 0, 1, 0, zapAnon)
+            print(f"Setting job {jobID} to zap {totalZap} Ghost from Anon")
+            db().newJob(6, totalZap, 0, gvr, 0, 0, 1, 0, zapAnon, jobID)
 
 
 def processJobs():
@@ -510,7 +516,7 @@ def processJobs():
         return
 
     for job in jobs:
-        jobID = job[0]
+        jobType = job[0]
         maxZap = job[1]
         currentZapAmount = job[2]
         gvr = job[3]
@@ -519,6 +525,7 @@ def processJobs():
         isActive = job[6]
         zapPub = job[7]
         zapAnon = job[8]
+        jobID = job[11]
         timeNow = int(time.time())
         nextTime = random.randint(MINTIME, MAXTIME)
         balance = getBalances()
@@ -528,100 +535,102 @@ def processJobs():
         availableAnon = getAvailableAnon()
         availablePublic = getAvailablePublic()
 
-        txn = db().getTxid(jobID)
-        txAnon = db().getTxidAnon(jobID)
+        txn = db().getTxid(jobType)
+        txAnon = db().getTxidAnon(jobType)
 
         if txn and not checkUnspent(txn):
             print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
-            db().setNextZap(jobID, int(timeNow + 300))
+            zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending Public Ghost")
+            db().setNextZap(jobType, int(timeNow + 300))
             return
         if txAnon and not checkUnspent(txAnon, True) and pendingAnon > 0:
             print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
-            db().setNextZap(jobID, int(timeNow + 300))
+            zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+            db().setNextZap(jobType, int(timeNow + 300))
             return
 
         if not isActive:
             print(f"Removing inactive job!")
-            db().removeJob(jobID)
+            db().removeJob(jobType)
             return
 
-        if jobID in [1, 4, 3, 6]:
+        if jobType in [1, 4, 3, 6]:
             if leftToZap < availableAnon:
                 availableAnon = leftToZap
             if lastZap == 0:
-                if availablePublic >= MINZAP and jobID in [1, 4]:
+                if availablePublic >= MINZAP and jobType in [1, 4]:
                     print(f"Sending {zapPub} Ghost to Anon from Public.")
                     txid = convertPublicToAnon(zapPub)
-                    zapLog("P2A", f"Sent {zapPub} GHOST to ANON from PUBLIC\nTXID: {txid}")
-                    db().setTxidAnon(jobID, txid)
-                    db().setLastZap(jobID, timeNow)
-                    db().setNextZap(jobID, int(timeNow+nextTime))
-                    print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
-                elif availablePublic < MINZAP and gvr or jobID in [3, 6] and gvr:
+                    zapLog("P2A", f"jobID: {jobID} Sent {zapPub} GHOST to ANON from PUBLIC\nTXID: {txid}")
+                    db().setTxidAnon(jobType, txid)
+                    db().setLastZap(jobType, timeNow)
+                    db().setNextZap(jobType, int(timeNow+nextTime))
+                    print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
+                elif availablePublic < MINZAP and gvr or jobType in [3, 6] and gvr:
                     if availableAnon >= 20001:
                         print(f"Sending 20,001 Ghost to Public from Anon.")
                         txid = convertAnonToPublic(round(float(20001), 8))
-                        zapLog("A2P", f"Sent 20001 GHOST to PUBLIC from ANON\nTXID: {txid}")
-                        db().setTxid(jobID, txid)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("A2P", f"jobID: {jobID} Sent 20001 GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxid(jobType, txid)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon >= 20000:
                         print(f"Sending {availableAnon} Ghost to Public from Anon.")
                         txid = convertAnonToPublic(round(float(availableAnon), 8))
-                        zapLog("A2P", f"Sent {availableAnon} GHOST to PUBLIC from ANON\nTXID: {txid}")
-                        db().setTxid(jobID, txid)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("A2P", f"jobID: {jobID} Sent {availableAnon} GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxid(jobType, txid)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 20000 and availableAnon >= 1500:
                         print(f"Zapping 1500 Ghost from Anon.")
                         txid = zapFromAnon(round(float(1500), 8))
-                        zapLog("ZAPANON", f"Zapped 1500 GHOST from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, txid)
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped 1500 GHOST from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, txid)
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 20000 and availableAnon < 1500:
                         print(f"Zapping {availableAnon} Ghost from Anon.")
                         txid = zapFromAnon(round(float(availableAnon), 8))
-                        zapLog("ZAPANON", f"Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
+                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP and leftToZap > 0:
                         print(f"Waiting on {pendingAnon} pending ANON Ghost")
-                        zapLog("PENDWAIT", f"Waiting on {pendingAnon} pending ANON Ghost")
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
 
-                elif availablePublic < MINZAP and not gvr or jobID in [3, 6] and not gvr:
+                elif availablePublic < MINZAP and not gvr or jobType in [3, 6] and not gvr:
                     if availableAnon >= 1500:
                         print(f"Zapping 1500 Ghost from Anon.")
                         txid = zapFromAnon(round(float(1500), 8))
-                        zapLog("ZAPANON", f"Zapped 1500 GHOST from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, txid)
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped 1500 GHOST from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, txid)
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 1500:
                         print(f"Zapping {availableAnon} Ghost from Anon.")
                         txid = zapFromAnon(round(float(availableAnon), 8))
-                        zapLog("ZAPANON", f"Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
+                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP and leftToZap > 0:
                         print(f"Waiting on {pendingAnon} pending ANON Ghost")
-                        zapLog("PENDWAIT", f"Waiting on {pendingAnon} pending ANON Ghost")
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
             else:
 
                 if gvr and nextZap <= timeNow:
@@ -635,87 +644,87 @@ def processJobs():
                                 break
                         print(f"Zapping {amount} Ghost from Public.")
                         txid = zapFromPublic(round(float(amount), 8), True, inputs)
-                        zapLog("ZAP", f"Zapped {amount} GHOST from PUBLIC\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + amount)
-                        db().setTxid(jobID, None)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAP", f"jobID: {jobID} Zapped {amount} GHOST from PUBLIC\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + amount)
+                        db().setTxid(jobType, None)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
 
                     elif availableAnon >= 20001:
                         print(f"Sending 20,001 Ghost to Public from Anon.")
                         txid = convertAnonToPublic(round(float(20001), 8))
-                        zapLog("A2P", f"Sent 20001 GHOST to PUBLIC from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, None)
-                        db().setTxid(jobID, txid)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("A2P", f"jobID: {jobID} Sent 20001 GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, None)
+                        db().setTxid(jobType, txid)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon >= 20000:
                         print(f"Sending {availableAnon} Ghost to Anon from Public.")
                         txid = convertAnonToPublic(round(float(availableAnon), 8))
-                        zapLog("A2P", f"Sent {availableAnon} GHOST to PUBLIC from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, None)
-                        db().setTxid(jobID, txid)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("A2P", f"jobID: {jobID} Sent {availableAnon} GHOST to PUBLIC from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, None)
+                        db().setTxid(jobType, txid)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 20000 and availableAnon >= 1500:
                         print(f"Zapping 1500 Ghost from Anon.")
                         txid = zapFromAnon(round(float(1500), 8))
-                        zapLog("ZAPANON", f"Zapped 1500 GHOST from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, txid)
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped 1500 GHOST from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, txid)
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 20000 and availableAnon < 1500 and availableAnon > MINZAP:
                         print(f"Zapping {availableAnon} Ghost from Anon.")
                         txid = zapFromAnon(round(float(availableAnon), 8))
-                        zapLog("ZAPANON", f"Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
+                        zapLog("ZAPALL", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP:
                         print(f"Waiting on {pendingAnon} pending ANON Ghost")
-                        zapLog("PENDWAIT", f"Waiting on {pendingAnon} pending ANON Ghost")
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
 
                 elif not gvr and nextZap <= timeNow:
                     if availableAnon >= 1500:
                         print(f"Zapping 1500 Ghost from Anon.")
                         txid = zapFromAnon(round(float(1500), 8))
-                        zapLog("ZAPANON", f"Zapped 1500 GHOST from ANON\nTXID: {txid}")
-                        db().setTxidAnon(jobID, txid)
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped 1500 GHOST from ANON\nTXID: {txid}")
+                        db().setTxidAnon(jobType, txid)
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availableAnon < 1500 and availableAnon > MINZAP:
                         print(f"Zapping {availableAnon} Ghost from Anon.")
                         txid = zapFromAnon(round(float(availableAnon), 8))
-                        zapLog("ZAPANON", f"Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
+                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP:
                         print(f"Waiting on {pendingAnon} pending ANON Ghost")
-                        zapLog("PENDWAIT", f"Waiting on {pendingAnon} pending ANON Ghost")
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + 300))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + 300))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     else:
                         print(f"Job complete")
-                        db().removeJob(jobID)
+                        db().removeJob(jobType)
                         sys.exit()
 
-        elif jobID in [2, 5]:
+        elif jobType in [2, 5]:
             if lastZap == 0 or nextZap <= timeNow:
                 if leftToZap < availablePublic:
                     availablePublic = leftToZap
@@ -723,58 +732,58 @@ def processJobs():
                     if availablePublic >= 20001:
                         print(f"Zapping 20001 Ghost from Public.")
                         txid = zapFromPublic(round(float(20001), 8), True)
-                        zapLog("ZAP", f"Zapped 20001 GHOST from PUBLIC\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availablePublic)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAP", f"jobID: {jobID} Zapped 20001 GHOST from PUBLIC\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availablePublic >= 20000:
                         print(f"Zapping {availablePublic} Ghost from Public.")
                         txid = zapFromPublic(round(float(availablePublic), 8), True)
-                        zapLog("ZAP", f"Zapped {availablePublic} GHOST from PUBLIC\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availablePublic)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAP", f"jobID: {jobID} Zapped {availablePublic} GHOST from PUBLIC\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availablePublic < 20000 and availablePublic >= 1500:
                         print(f"Zapping 1500 Ghost from Public.")
                         txid = zapFromPublic(round(float(1500), 8))
-                        zapLog("ZAP", f"Zapped 1500 GHOST from PUBLIC\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAP", f"jobID: {jobID} Zapped 1500 GHOST from PUBLIC\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availablePublic < 20000 and availablePublic < 1500:
                         print(f"Zapping {availablePublic} Ghost from Public.")
                         txid = zapFromAnon(round(float(availablePublic), 8))
-                        zapLog("ZAP", f"Zapped {availablePublic} GHOST from PUBLIC\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availablePublic)
-                        zapLog("ZAPPUB", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAP", f"jobID: {jobID} Zapped {availablePublic} GHOST from PUBLIC\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
+                        zapLog("ZAPPUB", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
 
                 elif availablePublic >= MINZAP and not gvr:
                     if availablePublic >= 1500:
                         print(f"Zapping 1500 Ghost from Public.")
                         txid = zapFromPublic(round(float(1500), 8))
-                        zapLog("ZAP", f"Zapped 1500 GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + 1500)
-                        db().setLastZap(jobID, timeNow)
-                        db().setNextZap(jobID, int(timeNow + nextTime))
-                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobID) / maxZap * 100, 2)}%")
+                        zapLog("ZAP", f"jobID: {jobID} Zapped 1500 GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + 1500)
+                        db().setLastZap(jobType, timeNow)
+                        db().setNextZap(jobType, int(timeNow + nextTime))
+                        print(f"Zap progress: {round(db().getCurrentZapAmount(jobType) / maxZap * 100, 2)}%")
                     elif availablePublic < 1500:
                         print(f"Zapping {availablePublic} Ghost from Public.")
                         txid = zapFromPublic(round(float(availablePublic), 8))
-                        zapLog("ZAP", f"Zapped {availablePublic} GHOST from ANON\nTXID: {txid}")
-                        db().setCurrentZapAmount(jobID, db().getCurrentZapAmount(jobID) + availablePublic)
-                        zapLog("ZAPPUB", f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobID)} Ghost\nJob Complete!")
-                        db().removeJob(jobID)
+                        zapLog("ZAP", f"jobID: {jobID} Zapped {availablePublic} GHOST from ANON\nTXID: {txid}")
+                        db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
+                        zapLog("ZAPPUB", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        db().removeJob(jobType)
                         sys.exit()
                 else:
                     print(f"Job complete")
-                    db().removeJob(jobID)
+                    db().removeJob(jobType)
 
 
 def checkUnspent(txid, anon=False):
@@ -901,7 +910,7 @@ def start():
     job = db().getJobs()
     if job != []:
         percent = round(job[0][2] / job[0][1] * 100, 2)
-        print(f"Job {percent}% of the way zapped found.")
+        print(f"Job {job[0][11]} found: {percent}% of the way zapped.")
         while True:
             ans = input(f"Would you like to resume this job? Y/n ")
             if ans.lower() == 'y' or ans == '':

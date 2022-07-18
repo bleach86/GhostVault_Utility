@@ -44,7 +44,8 @@ class Database:
                                    zapPub real,
                                    zapAnon real,
                                    txid text,
-                                   txidAnon text
+                                   txidAnon text,
+                                   jobID text
                                 )""")
 
 
@@ -97,12 +98,12 @@ class Database:
             return True
 
 
-    def newJob(self, type, maxZap, currentZapAmount, gvrMode, lastZap, nextZap, isActive, zapPub, zapAnon):
+    def newJob(self, type, maxZap, currentZapAmount, gvrMode, lastZap, nextZap, isActive, zapPub, zapAnon, jobID):
         if not self.isJob(type):
             with self.conn:
-                self.cursor.execute("""INSERT INTO jobs VALUES (:type, :maxZap, :currentZapAmount, :gvrMode, :lastZap, :nextZap, :isActive, :zapPub, :zapAnon, :txid, :txidAnon)""",
+                self.cursor.execute("""INSERT INTO jobs VALUES (:type, :maxZap, :currentZapAmount, :gvrMode, :lastZap, :nextZap, :isActive, :zapPub, :zapAnon, :txid, :txidAnon, :jobID)""",
                                     {'type': type, 'maxZap': maxZap, 'currentZapAmount': currentZapAmount, 'gvrMode': gvrMode,
-                                     'lastZap': lastZap, 'nextZap': nextZap, 'isActive': isActive, 'zapPub': zapPub, 'zapAnon': zapAnon, 'txid': None, 'txidAnon': None})
+                                     'lastZap': lastZap, 'nextZap': nextZap, 'isActive': isActive, 'zapPub': zapPub, 'zapAnon': zapAnon, 'txid': None, 'txidAnon': None, 'jobID': jobID})
 
     def removeJob(self, type):
         with self.conn:
@@ -188,8 +189,3 @@ class Database:
     def setTxidAnon(self, type, txid):
         with self.conn:
             self.cursor.execute("""UPDATE jobs SET txidAnon=:txidAnon WHERE type=:type""", {"txidAnon": txid, "type": type})
-
-
-
-#print(Database().setExtKey('PASDa5s2d15a6s1das1d65as1das1das5d1as5d1'))
-#print(Database().getExtKey())
