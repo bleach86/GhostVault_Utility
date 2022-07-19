@@ -800,7 +800,6 @@ def checkUnspent(txid, anon=False):
     return False
 
 
-
 def menu():
     while True:
         clear()
@@ -918,6 +917,7 @@ def start():
                 startJob()
                 break
             elif ans.lower() == 'n':
+                db().removeJob(job[0][0])
                 menu()
                 break
             else:
