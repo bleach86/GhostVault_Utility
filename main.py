@@ -18,7 +18,7 @@ def isValidCLI():
             desktopPath = os.path.expanduser("~/.config/ghost-desktop/ghostd/unpacked/")
             cliBin = "ghost-cli"
         elif system == 'Windows':
-            desktopPath = os.path.expanduser("~\\AppData\\Roaming\\Ghost\ Desktop\\ghostd\\unpacked\\")
+            desktopPath = os.path.expanduser("~\\AppData\\Roaming\\Ghost Desktop\\ghostd\\unpacked\\")
             cliBin = "ghost-cli.exe"
         elif system == 'Darwin':
             desktopPath = os.path.expanduser("~/Library/Application Support/Ghost Desktop/ghostd/unpacked/")
