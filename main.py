@@ -40,6 +40,8 @@ def isValidCLI():
                 print("ERROR: CLI binary not found!")
                 sys.exit()
         newest = f"{desktopPath}{max(dirs)}/{cliBin}"
+        if system == 'Windows':
+            newest = f"{desktopPath}{max(dirs)}\\{cliBin}"
 
         if os.path.isfile(newest):
             db().setCliPath(newest)
