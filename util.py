@@ -120,7 +120,7 @@ def callrpc(port, method, params=[], wallet=None):
 def callrpc_cli(bindir, cmd):
     command_cli = os.path.join(bindir)
 
-    args = command_cli + ' ' + cmd
+    args = f'"{command_cli}" {cmd}' #command_cli + ' ' + cmd
     p = subprocess.Popen(args, stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE, shell=True)
     out = p.communicate()
 
