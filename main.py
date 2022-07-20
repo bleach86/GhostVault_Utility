@@ -359,24 +359,23 @@ def setJob(jobType):
     print(f"Job Setup\n\n")
     jobID = secrets.token_urlsafe(4)
 
-    if jobType in [1, 2, 4, 5]:
-        while True:
-            print(f"GVR Mode will ensure that your zaps are done in multiples of 20k.\n")
-            ans = input(f"Would you like to enable GVR mode y/N: ")
-            ans = ans.lower()
+    while True:
+        print(f"GVR Mode will ensure that your zaps are done in multiples of 20k.\n")
+        ans = input(f"Would you like to enable GVR mode y/N: ")
+        ans = ans.lower()
 
-            if ans == "" or ans == "n":
-                print(f"Normal mode Active.")
-                gvr = False
-                break
-            elif ans == "y":
-                print("GVR Mode Active")
-                print(f"Addresses used for GVR zaps will be logged {os.getcwd()}/{jobID}_GVR_Addresses.txt")
-                gvr = True
-                break
-            else:
-                print("Invalid Response.")
-                input("Press Enter to continue...")
+        if ans == "" or ans == "n":
+            print(f"Normal mode Active.")
+            gvr = False
+            break
+        elif ans == "y":
+            print("GVR Mode Active")
+            print(f"Addresses used for GVR zaps will be logged {os.getcwd()}/{jobID}_GVR_Addresses.txt")
+            gvr = True
+            break
+        else:
+            print("Invalid Response.")
+            input("Press Enter to continue...")
 
     if jobType <= 3:
         if jobType == 1:
