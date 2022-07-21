@@ -248,7 +248,7 @@ def zapFromPublic(amount, gvr=False, inputs=''):
 
 
 def convertAnonToPublic(amount):
-    output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', "subfee": true}]'
+    output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', \\"subfee\\": true}]'
 
     unlockWallet()
     txid = util.callrpc_cli(db().getCliPath(),
@@ -541,21 +541,22 @@ def processJobs():
         txn = db().getTxid(jobType)
         txAnon = db().getTxidAnon(jobType)
 
-        if txn and not checkUnspent(txn):
-            print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
-            zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending Public Ghost")
-            db().setNextZap(jobType, int(timeNow + 300))
-            return
-        if txAnon and not checkUnspent(txAnon, True) and pendingAnon > 0:
-            print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
-            zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
-            db().setNextZap(jobType, int(timeNow + 300))
-            return
-
         if not isActive:
             print(f"Removing inactive job!")
             db().removeJob(jobType)
             return
+
+        if nextZap <= timeNow:
+            if txn and not checkUnspent(txn):
+                print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
+                zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending Public Ghost")
+                db().setNextZap(jobType, int(timeNow + 300))
+                return
+            if txAnon and not checkUnspent(txAnon, True) and pendingAnon > 0:
+                print(f"UTXO not yet confirmed. Retrying in 5 minutes...")
+                zapLog("PENDWAIT", f"jobID: {jobID} Waiting on {pendingAnon} pending ANON Ghost")
+                db().setNextZap(jobType, int(timeNow + 300))
+                return
 
         if jobType in [1, 4, 3, 6]:
             if leftToZap < availableAnon:
@@ -600,7 +601,7 @@ def processJobs():
                         txid = zapFromAnon(round(float(availableAnon), 8))
                         zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPALL", f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP and leftToZap > 0:
@@ -625,7 +626,7 @@ def processJobs():
                         txid = zapFromAnon(round(float(availableAnon), 8))
                         zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPALL", f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP and leftToZap > 0:
@@ -687,8 +688,8 @@ def processJobs():
                         txid = zapFromAnon(round(float(availableAnon), 8))
                         zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
-                        zapLog("ZAPALL", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPALL", f"jobID: {jobID} Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP:
@@ -713,8 +714,8 @@ def processJobs():
                         txid = zapFromAnon(round(float(availableAnon), 8))
                         zapLog("ZAPANON", f"jobID: {jobID} Zapped {availableAnon} GHOST from ANON\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availableAnon)
-                        zapLog("ZAPALL", f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPALL", f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
                     elif pendingAnon >= MINZAP:
@@ -762,8 +763,8 @@ def processJobs():
                         txid = zapFromAnon(round(float(availablePublic), 8))
                         zapLog("ZAP", f"jobID: {jobID} Zapped {availablePublic} GHOST from PUBLIC\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
-                        zapLog("ZAPPUB", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPPUB", f"jobID: {jobID} Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
 
@@ -781,8 +782,8 @@ def processJobs():
                         txid = zapFromPublic(round(float(availablePublic), 8))
                         zapLog("ZAP", f"jobID: {jobID} Zapped {availablePublic} GHOST from ANON\nTXID: {txid}")
                         db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + availablePublic)
-                        zapLog("ZAPPUB", f"jobID: {jobID} Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
-                        print(f"Sucsessfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        zapLog("ZAPPUB", f"jobID: {jobID} Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                        print(f"Successfully zapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
                         db().removeJob(jobType)
                         sys.exit()
                 else:
@@ -933,5 +934,5 @@ def start():
 
 
 if __name__ == '__main__':
-    #zapFromPublic(3.4, True)
+    # zapFromPublic(3.4, True)
     start()
