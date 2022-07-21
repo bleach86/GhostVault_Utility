@@ -171,24 +171,33 @@ def unlockWallet():
             sys.exit()
 
 
+def getStealthAddr():
+    if not db().getStealthAddr():
+        unlockWallet()
+        newAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewstealthaddress")
+        db().setStealthAddr(newAddr)
+    stealthAddr = db().getStealthAddr()
+    return stealthAddr
+
+
 def zapFromAnon(amount):
     unlockWallet()
     spendAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewaddress '' false false true")
     keyIndex = random.randint(0, 499)
     unlockWallet()
     stakeAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} deriverangekeys {keyIndex} {keyIndex} {db().getExtKey()}")[0]
-    script = json.dumps({'recipe': 'ifcoinstake', 'addrstake': stakeAddr, 'addrspend': spendAddr})
+    script = '{\\"recipe\\": \\"ifcoinstake\\", \\"addrstake\\": ' +  '\\"' + f'{stakeAddr}' + '\\", \\"addrspend\\": \\"' + f'{spendAddr}' + '\\"}'
     unlockWallet()
-    scriptHex = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} buildscript '{script}'")['hex']
+    scriptHex = util.callrpc_cli(db().getCliPath(), f'-rpcwallet={db().getWalletName()} buildscript "{script}"')['hex']
 
-    output = json.dumps([{"address": "script", "amount": amount, "script": scriptHex, "subfee": True}])
+    output = '[{\\"address\\": \\"script\\", \\"amount\\": ' + f'{amount}' + ', \\"script\\": ' + '\\"' + f'{scriptHex}' + '\\"' + ', \\"subfee\\": true}]'
 
     unlockWallet()
-    txid = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} sendtypeto 'anon' 'ghost' '{output}'")
+    txid = util.callrpc_cli(db().getCliPath(), f'-rpcwallet={db().getWalletName()} sendtypeto "anon" "ghost" "{output}"')
     return txid
 
 
-def zapFromPublic(amount, gvr=False, inputs=[]):
+def zapFromPublic(amount, gvr=False, inputs=''):
     unlockWallet()
     spendAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewaddress '' false false true")
     keyIndex = random.randint(0, 499)
@@ -197,88 +206,81 @@ def zapFromPublic(amount, gvr=False, inputs=[]):
     unlockWallet()
     unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
 
-    if inputs == []:
+    if inputs == '':
         inputTotal = 0
+        inputs = inputs + '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\", \\"inputs\\": ['
         for i in unspent:
             if 'coldstaking_address' in i:
                 continue
-            inputs.append({"tx": i['txid'], "n": i['vout']})
+            inputs += '{\\"tx\\": \\"' + f'{i["txid"]}' + '\\", ' + '\\"n\\": ' + f'{i["vout"]}' + '}, '
             inputTotal += i['amount']
             if inputTotal >= amount:
+                inputs = inputs[:-2] + ']}'
                 break
 
         if inputTotal < amount:
             print(f"Not enough inputs!")
             sys.exit()
-
-    script = json.dumps({'recipe': 'ifcoinstake', 'addrstake': stakeAddr, 'addrspend': spendAddr})
+    script = '{\\"recipe\\": \\"ifcoinstake\\", \\"addrstake\\": ' + '\\"' + f'{stakeAddr}' + '\\", \\"addrspend\\": \\"' + f'{spendAddr}' + '\\"}'
     unlockWallet()
-    scriptHex = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} buildscript '{script}'")['hex']
+    scriptHex = util.callrpc_cli(db().getCliPath(), f'-rpcwallet={db().getWalletName()} buildscript "{script}"')['hex']
 
-    output = []
+    output = '['
     if gvr:
         jobID = db().getJobs()[0][11]
         gvrAddr(jobID, spendAddr)
         zapPart = amount
         while zapPart > 0:
             if zapPart >= 1500:
-                output.append({"address": "script", "amount": 1500, "script": scriptHex, "subfee": True})
+                output += '{\\"address\\": \\"script\\", \\"amount\\": 1500, \\"script\\": \\"' + f'{scriptHex}' + '\\", \\"subfee\\": true}, '
                 zapPart -= 1500
             else:
-                output.append({"address": "script", "amount": round(zapPart, 8), "script": scriptHex, "subfee": True})
+                output += '{\\"address\\": \\"script\\", \\"amount\\": ' + f'{round(zapPart, 8)}' + ', \\"script\\": \\"' + f'{scriptHex}' + '\\", \\"subfee\\": true}, '
                 break
     else:
-        output.append({"address": "script", "amount": amount, "script": scriptHex, "subfee": True})
+        output += '{\\"address\\": \\"script\\", \\"amount\\": ' + f'{amount}' + ', \\"script\\": \\"' + f'{scriptHex}' + '\\", \\"subfee\\": true}, '
+
+    output = output[:-2] + ']'
 
     unlockWallet()
-    txid = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} sendtypeto 'ghost' 'ghost' '{json.dumps(output)}' '' '' 5 1 false '{json.dumps({'inputs': inputs})}'")
+    txid = util.callrpc_cli(db().getCliPath(), f'-rpcwallet={db().getWalletName()} sendtypeto "ghost" "ghost" "{output}" "" "" 5 1 false "{inputs}"')
     return txid
 
 
 def convertAnonToPublic(amount):
-    if not db().getStealthAddr():
-        unlockWallet()
-        newAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewstealthaddress")
-        db().setStealthAddr(newAddr)
-    stealthAddr = db().getStealthAddr()
-
-    output = json.dumps([{"address": stealthAddr, "amount": amount, "subfee": True}])
+    output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', "subfee": true}]'
 
     unlockWallet()
     txid = util.callrpc_cli(db().getCliPath(),
-                            f"-rpcwallet={db().getWalletName()} sendtypeto 'anon' 'ghost' '{output}'")
+                            f'-rpcwallet={db().getWalletName()} sendtypeto "anon" "ghost" "{output}"')
     return txid
 
 
 def convertPublicToAnon(amount):
-    if not db().getStealthAddr():
-        unlockWallet()
-        newAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewstealthaddress")
-        db().setStealthAddr(newAddr)
-    stealthAddr = db().getStealthAddr()
-
     unlockWallet()
     unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
     inputTotal = 0
-    inputs = []
 
+    inputTotal = 0
+    inputs = '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\", \\"inputs\\": ['
     for i in unspent:
         if 'coldstaking_address' in i:
             continue
-        inputs.append({"tx": i['txid'], "n": i['vout']})
+        inputs += '{\\"tx\\": \\"' + f'{i["txid"]}' + '\\", ' + '\\"n\\": ' + f'{i["vout"]}' + '}, '
         inputTotal += i['amount']
         if inputTotal >= amount:
+            inputs = inputs[:-2] + ']}'
             break
 
     if inputTotal < amount:
         print(f"Not enough inputs!")
         sys.exit()
 
-    output = json.dumps([{"address": stealthAddr, "amount": amount, "subfee": True}])
+    output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', \\"subfee\\": true}]'
 
     unlockWallet()
     txid = util.callrpc_cli(db().getCliPath(),
-                            f"-rpcwallet={db().getWalletName()} sendtypeto 'ghost' 'anon' '{output}' '' '' 5 1 false '{json.dumps({'inputs': inputs})}'")
+                            f'-rpcwallet={db().getWalletName()} sendtypeto "ghost" "anon" "{output}" "" "" 5 1 false "{inputs}"')
     return txid
 
 
@@ -638,9 +640,10 @@ def processJobs():
                     if txn:
                         unlockWallet()
                         unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
+                        inputs = '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\", \\"inputs\\": ['
                         for i in unspent:
                             if i['txid'] == txn:
-                                inputs = [{'tx': txn, 'n': i['vout']}]
+                                inputs += '{\\"tx\\": \\"' + f'{txn}' + '\\", \\"n\\": ' + f'{i["vout"]}' + '}]}'
                                 amount = i['amount']
                                 break
                         print(f"Zapping {amount} Ghost from Public.")
@@ -845,6 +848,7 @@ def menu():
             break
         elif ans == '7':
             db().setWalletName(None)
+            db().setStealthAddr(None)
             checkWallet()
             if isEncrypted():
                 print(f"Encrypted wallet found!")
@@ -929,4 +933,5 @@ def start():
 
 
 if __name__ == '__main__':
+    #zapFromPublic(3.4, True)
     start()
