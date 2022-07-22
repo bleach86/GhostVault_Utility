@@ -5,8 +5,8 @@ from database import Database as db
 VERSION = "v0.2"
 WALLETPASSWORD = None
 MINZAP = 0.1
-MINTIME = int(60*30) # 30 minutes Int to insure whole number
-MAXTIME = int(60*60*2.5) # 2.5 hours Int to insure whole number
+MINTIME = int(60*30)  # 30 minutes Int to insure whole number
+MAXTIME = int(60*60*2.5)  # 2.5 hours Int to insure whole number
 
 system = platform.system()
 
@@ -25,8 +25,11 @@ def isValidCLI():
             cliBin = "ghost-cli"
 
         if not os.path.isdir(desktopPath):
-            if os.path.isfile("ghost-cli"):
-                db().setCliPath(f"{os.getcwd()}")
+            if os.path.isfile("ghost-cli") or os.path.isfile("ghost-cli.exe"):
+                if system == 'Windows':
+                    db().setCliPath(f"{os.getcwd()}\\ghost-cli.exe")
+                else:
+                    db().setCliPath(f"{os.getcwd()}/ghost-cli")
                 return True
             else:
                 print("ERROR: CLI binary not found!")
@@ -54,7 +57,7 @@ def isValidCLI():
             desktopPath = os.path.expanduser("~/.config/ghost-desktop/ghostd/unpacked/")
             cliBin = "ghost-cli"
         elif system == 'Windows':
-            desktopPath = os.path.expanduser("~/AppData/Roaming/Ghost Desktop/ghostd/unpacked/")
+            desktopPath = os.path.expanduser("~\\AppData\\Roaming\\Ghost Desktop\\ghostd\\unpacked\\")
             cliBin = "ghost-cli.exe"
         elif system == 'Darwin':
             desktopPath = os.path.expanduser("~/Library/Application Support/Ghost Desktop/ghostd/unpacked/")
@@ -63,6 +66,8 @@ def isValidCLI():
         if desktopPath in cliPath:
             dirs = [name for name in os.listdir(desktopPath) if os.path.isdir(os.path.join(desktopPath, name))]
             newest = f"{desktopPath}{max(dirs)}/{cliBin}"
+            if system == 'Windows':
+                newest = f"{desktopPath}{max(dirs)}\\{cliBin}"
 
             if newest != cliPath:
                 db().setCliPath(newest)
@@ -183,7 +188,7 @@ def getStealthAddr():
 def zapFromAnon(amount):
     unlockWallet()
     spendAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewaddress '' false false true")
-    keyIndex = random.randint(0, 499)
+    keyIndex = random.randint(0, 999)
     unlockWallet()
     stakeAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} deriverangekeys {keyIndex} {keyIndex} {db().getExtKey()}")[0]
     script = '{\\"recipe\\": \\"ifcoinstake\\", \\"addrstake\\": ' +  '\\"' + f'{stakeAddr}' + '\\", \\"addrspend\\": \\"' + f'{spendAddr}' + '\\"}'
@@ -200,7 +205,7 @@ def zapFromAnon(amount):
 def zapFromPublic(amount, gvr=False, inputs=''):
     unlockWallet()
     spendAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} getnewaddress '' false false true")
-    keyIndex = random.randint(0, 499)
+    keyIndex = random.randint(0, 999)
     unlockWallet()
     stakeAddr = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} deriverangekeys {keyIndex} {keyIndex} {db().getExtKey()}")[0]
     unlockWallet()
@@ -256,25 +261,25 @@ def convertAnonToPublic(amount):
     return txid
 
 
-def convertPublicToAnon(amount):
+def convertPublicToAnon(amount, inputs=''):
     unlockWallet()
     unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
-    inputTotal = 0
 
     inputTotal = 0
-    inputs = '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\", \\"inputs\\": ['
-    for i in unspent:
-        if 'coldstaking_address' in i:
-            continue
-        inputs += '{\\"tx\\": \\"' + f'{i["txid"]}' + '\\", ' + '\\"n\\": ' + f'{i["vout"]}' + '}, '
-        inputTotal += i['amount']
-        if inputTotal >= amount:
-            inputs = inputs[:-2] + ']}'
-            break
+    if inputs == '':
+        inputs = '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\"inputs\\": ['
+        for i in unspent:
+            if 'coldstaking_address' in i:
+                continue
+            inputs += '{\\"tx\\": \\"' + f'{i["txid"]}' + '\\", \\"n\\": ' + f'{i["vout"]}' + '}, '
+            inputTotal += i['amount']
+            if inputTotal >= amount:
+                inputs = inputs[:-2] + ']}'
+                break
 
-    if inputTotal < amount:
-        print(f"Not enough inputs!")
-        sys.exit()
+        if inputTotal < amount:
+            print(f"Not enough inputs!")
+            sys.exit()
 
     output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', \\"subfee\\": true}]'
 
@@ -289,15 +294,21 @@ def getAvailableAnon():
     return trustedAnon
 
 
-def getAvailablePublic():
+def getAvailablePublic(staked=False):
     available = 0
     unlockWallet()
     unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
 
-    for i in unspent:
-        if 'coldstaking_address' in i:
-            continue
-        available += i['amount']
+    if not staked:
+        for i in unspent:
+            if 'coldstaking_address' in i:
+                continue
+            available += i['amount']
+    else:
+        for i in unspent:
+            if 'coldstaking_address' not in i:
+                continue
+            available += i['amount']
 
     available = float(round(available, 8))
     return available
@@ -360,26 +371,31 @@ def setJob(jobType):
     clear()
     print(f"Job Setup\n\n")
     jobID = secrets.token_urlsafe(4)
+    if system == 'Windows':
+        slash = '\\'
+    else:
+        slash = '/'
 
-    while True:
-        print(f"GVR Mode will ensure that your zaps are done in multiples of 20k.\n")
-        ans = input(f"Would you like to enable GVR mode y/N: ")
-        ans = ans.lower()
+    if jobType in [1, 2, 3, 4, 5, 6]:
+        while True:
+            print(f"GVR Mode will ensure that your zaps are done in multiples of 20k.\n")
+            ans = input(f"Would you like to enable GVR mode y/N: ")
+            ans = ans.lower()
 
-        if ans == "" or ans == "n":
-            print(f"Normal mode Active.")
-            gvr = False
-            break
-        elif ans == "y":
-            print("GVR Mode Active")
-            print(f"Addresses used for GVR zaps will be logged {os.getcwd()}/{jobID}_GVR_Addresses.txt")
-            gvr = True
-            break
-        else:
-            print("Invalid Response.")
-            input("Press Enter to continue...")
+            if ans == "" or ans == "n":
+                print(f"Normal mode Active.")
+                gvr = False
+                break
+            elif ans == "y":
+                print("GVR Mode Active")
+                print(f"Addresses used for GVR zaps will be logged {os.getcwd()}{slash}{jobID}_GVR_Addresses.txt")
+                gvr = True
+                break
+            else:
+                print("Invalid Response.")
+                input("Press Enter to continue...")
 
-    if jobType <= 3:
+    if jobType in [1, 2, 3]:
         if jobType == 1:
             totalZap = getAvailablePublic() + getAvailableAnon()
             if totalZap < MINZAP:
@@ -403,7 +419,7 @@ def setJob(jobType):
                 sys.exit()
             print(f"Setting job {jobID} to zap {totalZap} GHOST from Anon..")
             db().newJob(3, totalZap, 0, gvr, 0, 0, 1, 0, getAvailableAnon(), jobID)
-    elif jobType <= 6 and jobType >= 4:
+    elif jobType in [4, 5, 6]:
 
         if jobType == 4:
             while True:
@@ -510,6 +526,13 @@ def setJob(jobType):
             totalZap = round(zapAnon, 8)
             print(f"Setting job {jobID} to zap {totalZap} Ghost from Anon")
             db().newJob(6, totalZap, 0, gvr, 0, 0, 1, 0, zapAnon, jobID)
+    elif jobType == 7:
+        staked = getAvailablePublic(True)
+        if staked <= 0:
+            print(f"No coins to unstake")
+            sys.exit()
+        print(f"Setting job {jobID} to securely unzap {staked} Ghost")
+        db().newJob(7, staked, 0, 0, 0, 0, 1, 0, 0, jobID)
 
 
 def processJobs():
@@ -790,6 +813,52 @@ def processJobs():
                     print(f"Job complete")
                     db().removeJob(jobType)
 
+        elif jobType == 7:
+            if lastZap == 0 or nextZap <= timeNow:
+                staked = getAvailablePublic(True)
+
+                if staked <= 0:
+                    print(f"Job complete")
+                    zapLog("UNZAP",
+                           f"jobID: {jobID} Successfully Unzapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                    db().removeJob(jobType)
+                    sys.exit()
+
+                unlockWallet()
+                unspent = util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} listunspent")
+                inputs = '{\\"changeaddress\\": \\"' + f'{getStealthAddr()}' + '\\", \\"inputs\\": ['
+                addr = None
+                amount = 0
+
+                for i in unspent:
+                    if 'coldstaking_address' in i:
+                        if not addr:
+                            addr = i['address']
+                        if i['address'] == addr:
+                            inputs += '{\\"tx\\": \\"' + f'{i["txid"]}' + '\\", \\"n\\": ' + f'{i["vout"]}' + '}, '
+                            amount += i['amount']
+                if not addr:
+                    print(f"No staking inputs found.")
+                    print(f"Job complete")
+                    zapLog("UNZAP",
+                           f"jobID: {jobID} Successfully Unzapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                    db().removeJob(jobType)
+                    sys.exit()
+                else:
+                    inputs = inputs[:-2] + ']}'
+                print(f"Unapping {amount} Ghost from Public.")
+                txid = convertPublicToAnon(round(float(amount), 8), inputs)
+                zapLog("UNZAP", f"jobID: {jobID} Unzapped {amount} GHOST from PUBLIC\nTXID: {txid}")
+                db().setCurrentZapAmount(jobType, db().getCurrentZapAmount(jobType) + amount)
+                db().setLastZap(jobType, timeNow)
+                db().setNextZap(jobType, int(timeNow + nextTime))
+                if getAvailablePublic(True) <= 0:
+                    zapLog("UNZAP",
+                           f"jobID: {jobID} Successfully Unzapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                    print(f"Successfully Unzapped {db().getCurrentZapAmount(jobType)} Ghost\nJob Complete!")
+                    db().removeJob(jobType)
+                    sys.exit()
+
 
 def checkUnspent(txid, anon=False):
     if anon:
@@ -815,6 +884,7 @@ def menu():
         print(f"4: Zap Part PUB+ANON")
         print(f"5: Zap Part PUB")
         print(f"6: Zap Part ANON")
+        print(f"7: Secure Unzap")
         print("\n")
         print(f"Available Public: {getAvailablePublic()}")
         print(f"Available Anon: {getAvailableAnon()}")
@@ -823,9 +893,9 @@ def menu():
             wallet = "[Default Wallet]"
         print(f"Current Wallet: {wallet}")
         print("\n")
-        print(f"7: Change Wallet")
-        print(f"8: Set new Extended Public Key")
-        print(f"9: Exit")
+        print(f"8: Change Wallet")
+        print(f"9: Set new Extended Public Key")
+        print(f"10: Exit")
         print("\n")
         ans = input(f"Please enter the number of the task you would like to start: ")
 
@@ -848,16 +918,19 @@ def menu():
             setJob(int(ans))
             break
         elif ans == '7':
+            setJob(int(ans))
+            break
+        elif ans == '8':
             db().setWalletName(None)
             db().setStealthAddr(None)
             checkWallet()
             if isEncrypted():
                 print(f"Encrypted wallet found!")
                 getWalletPassword()
-        elif ans == '8':
+        elif ans == '9':
             db().setExtKey(None)
             getExtKey()
-        elif ans == '9':
+        elif ans == '10':
             print(f"Goodbye")
             sys.exit()
         else:
@@ -934,5 +1007,5 @@ def start():
 
 
 if __name__ == '__main__':
-    # zapFromPublic(3.4, True)
     start()
+
