@@ -15,7 +15,7 @@ Prerequisites
 How to run the software
 ***
 
-Start by downloading and extracting the [Latest Release](https://github.com/bleach86/GhostVault_Utility/)
+Start by downloading and extracting the [Latest Release](https://github.com/bleach86/GhostVault_Utility/releases/latest)
 
 Then make sure that ghost-desktop is running and fully synced with the Ghost network.
 
