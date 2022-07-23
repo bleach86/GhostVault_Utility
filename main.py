@@ -32,7 +32,7 @@ def isValidCLI():
                     db().setCliPath(f"{os.getcwd()}/ghost-cli")
                 return True
             else:
-                print("ERROR: CLI binary not found!")
+                input("ERROR: CLI binary not found! Press Enter to exit.")
                 sys.exit()
         dirs = [name for name in os.listdir(desktopPath) if os.path.isdir(os.path.join(desktopPath, name))]
         if dirs == []:
@@ -40,7 +40,7 @@ def isValidCLI():
                 db().setCliPath(f"{os.getcwd()}")
                 return True
             else:
-                print("ERROR: CLI binary not found!")
+                input("ERROR: CLI binary not found! Press Enter to exit.")
                 sys.exit()
         newest = f"{desktopPath}{max(dirs)}/{cliBin}"
         if system == 'Windows':
@@ -50,7 +50,7 @@ def isValidCLI():
             db().setCliPath(newest)
             return True
         else:
-            print("ERROR: CLI binary not found!")
+            input("ERROR: CLI binary not found! Press Enter to exit.")
             sys.exit()
     else:
         if system == 'Linux':
@@ -80,7 +80,7 @@ def isValidCLI():
             if os.path.isfile(cliPath):
                 return True
             else:
-                print("ERROR: CLI binary not found!")
+                input("ERROR: CLI binary not found! Press Enter to exit.")
                 sys.exit()
 
 
@@ -138,7 +138,7 @@ def checkWallet():
             util.callrpc_cli(db().getCliPath(), f"-rpcwallet={wallet} getwalletinfo")
             return True
         except:
-            print(f"ERROR: Valid wallet not found!")
+            input(f"ERROR: Valid wallet not found! Press Enter to exit.")
             sys.exit()
 
 
@@ -161,7 +161,7 @@ def getWalletPassword():
         util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} walletpassphrase {walletPass} 1")
         WALLETPASSWORD = walletPass
     except:
-        print(f"Invalid password! Please try again later.")
+        input(f"Invalid password! Please try again later. Press Enter to exit")
         sys.exit()
 
 
@@ -172,7 +172,7 @@ def unlockWallet():
         try:
             util.callrpc_cli(db().getCliPath(), f"-rpcwallet={db().getWalletName()} walletpassphrase {WALLETPASSWORD} 2")
         except:
-            print(f"Invalid password! Please try again later.")
+            input(f"Invalid password! Please try again later. Press Enter to exit")
             sys.exit()
 
 
@@ -224,7 +224,7 @@ def zapFromPublic(amount, gvr=False, inputs=''):
                 break
 
         if inputTotal < amount:
-            print(f"Not enough inputs!")
+            input(f"Not enough inputs! Press Enter to exit.")
             sys.exit()
     script = '{\\"recipe\\": \\"ifcoinstake\\", \\"addrstake\\": ' + '\\"' + f'{stakeAddr}' + '\\", \\"addrspend\\": \\"' + f'{spendAddr}' + '\\"}'
     unlockWallet()
@@ -278,7 +278,7 @@ def convertPublicToAnon(amount, inputs=''):
                 break
 
         if inputTotal < amount:
-            print(f"Not enough inputs!")
+            input(f"Not enough inputs! Press Enter to exit.")
             sys.exit()
 
     output = '[{\\"address\\": \\"' + f'{getStealthAddr()}' + '\\", \\"amount\\": ' + f'{amount}' + ', \\"subfee\\": true}]'
@@ -399,7 +399,7 @@ def setJob(jobType):
         if jobType == 1:
             totalZap = getAvailablePublic() + getAvailableAnon()
             if totalZap < MINZAP:
-                print(f"Balance too low to zap!")
+                input(f"Balance too low to zap! Press Enter to exit.")
                 sys.exit()
             print(f"Setting job {jobID} to zap {totalZap} GHOST from Public and Anon...")
             db().newJob(1, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), getAvailableAnon(), jobID)
@@ -407,7 +407,7 @@ def setJob(jobType):
         elif jobType == 2:
             totalZap = getAvailablePublic()
             if totalZap < MINZAP:
-                print(f"Balance too low to zap!")
+                input(f"Balance too low to zap! Press Enter to exit.")
                 sys.exit()
             print(f"Setting job {jobID} to zap {totalZap} GHOST from Public..")
             db().newJob(2, totalZap, 0, gvr, 0, 0, 1, getAvailablePublic(), 0, jobID)
@@ -415,7 +415,7 @@ def setJob(jobType):
         elif jobType == 3:
             totalZap = getAvailableAnon()
             if totalZap < MINZAP:
-                print(f"Balance too low to zap!")
+                input(f"Balance too low to zap! Press Enter to exit.")
                 sys.exit()
             print(f"Setting job {jobID} to zap {totalZap} GHOST from Anon..")
             db().newJob(3, totalZap, 0, gvr, 0, 0, 1, 0, getAvailableAnon(), jobID)
@@ -529,7 +529,7 @@ def setJob(jobType):
     elif jobType == 7:
         staked = getAvailablePublic(True)
         if staked <= 0:
-            print(f"No coins to unstake")
+            input(f"No coins to unstake. Press Enter to exit.")
             sys.exit()
         print(f"Setting job {jobID} to securely unzap {staked} Ghost")
         db().newJob(7, staked, 0, 0, 0, 0, 1, 0, 0, jobID)
@@ -943,12 +943,12 @@ def startJob():
     while True:
         job = db().getJobs()
         if job == []:
-            print(f"No active jobs found")
+            input(f"No active jobs found. Press Enter to exit.")
             sys.exit()
         processJobs()
         job = db().getJobs()
         if job == []:
-            print(f"No active jobs found")
+            input(f"No active jobs found. Press Enter to exit.")
             sys.exit()
         print(f"Next action at: {str(datetime.fromtimestamp(job[0][5]))}")
 
@@ -968,7 +968,7 @@ def start():
     if checkConnection():
         print(f"ghostd connected!")
     else:
-        print(f"Failed to connect to ghostd!")
+        input(f"Failed to connect to ghostd! Press Enter to exit.")
         sys.exit()
     print(f"Checking for valid wallet...")
     if checkWallet():
