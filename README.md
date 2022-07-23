@@ -19,11 +19,11 @@ Start by downloading and extracting the [Latest Release](https://github.com/blea
 
 Then make sure that ghost-desktop is running and fully synced with the Ghost network.
 
-On Windows, you can just click the executable, GZU.exe,  to launch. 
+On Windows or Mac, you can just click the executable, GZU.exe or GZU.app,  to launch. 
 
 When you click on the executable, and a cmd window will open with the GZU running in it.
 
-On Linux and Mac, a terminal window may not open when clicked. If this is the case you will need to open a terminal then either navigate to the folder with the executable in it, or you will need to drag the executable into the terminal window.
+On Linux, a terminal window may not open when clicked. If this is the case you will need to open a terminal then either navigate to the folder with the executable in it, or you will need to drag the executable into the terminal window.
 
 If you wish to navigate using the cd command, it would look as follows if you extracted the zip into the Downloads directory. 
 
