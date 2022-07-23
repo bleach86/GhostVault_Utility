@@ -932,6 +932,7 @@ def menu():
             getExtKey()
         elif ans == '10':
             print(f"Goodbye")
+            time.sleep(2)
             sys.exit()
         else:
             print("Invalid Response.")
