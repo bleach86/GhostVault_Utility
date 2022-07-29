@@ -12,7 +12,7 @@ Prerequisites
 
 or
 
--ghost-core v0.21.1.10 or better [Link](https://github.com/ghost-coin/ghost-core/releases/latest)
+- ghost-core v0.21.1.10 or better [Link](https://github.com/ghost-coin/ghost-core/releases/latest)
 
 - GhostVault v1.2 or better [Link](https://github.com/ghost-coin/GhostVault)
 
