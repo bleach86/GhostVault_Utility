@@ -29,6 +29,10 @@ In the options window, on the bottom left click the button that says `Open Confi
 In the file it opens, add the line `server=1` then save and exit.
 
 Now close ghost-qt and then relaunch it.
+
+When using ghost-qt it is recomended to run the GZU executable from the same folder that ghost-qt is located.
+
+The file ghost-cli or ghost-cli.exe must also be present in this folder.
 ***
 
 How to run the software
@@ -59,7 +63,9 @@ Then you would run it by doing the following.
 
 ![alt text](https://github.com/bleach86/GhostVault_Utility/blob/main/images/first_run.png?raw=true)
 
-Now that GZU is running, it will locate the ghost-cli binary and check that ghostd is running. If that is all good, it will ask you to input the name of the wallet that you want to use.
+Now that GZU is running, it will locate the ghost-cli binary and check that ghostd is running. 
+
+If that is all good, it will ask you to input the name of the wallet that you want to use.
 
 The name is case sensitive and must match the name exactly.
 
