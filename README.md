@@ -18,6 +18,7 @@ or
 
 ***
 Setting config. For ghost-qt only
+***
 
 Start by starting ghost-qt and make sure it is fully synced with the ghost network. 
 
