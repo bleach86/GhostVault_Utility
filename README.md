@@ -10,14 +10,33 @@ Prerequisites
 
 - ghost-desktop v2.0.11 or better [Link](https://github.com/ghost-coin/ghost-desktop/releases/latest)
 
+or
+
+-ghost-core v0.21.1.10 or better [Link](https://github.com/ghost-coin/ghost-core/releases/latest)
+
 - GhostVault v1.2 or better [Link](https://github.com/ghost-coin/GhostVault)
+
+***
+Setting config. For ghost-qt only
+
+Start by starting ghost-qt and make sure it is fully synced with the ghost network. 
+
+Once synced, click on `Settings` on the menu bar, then select `Options...`
+
+In the options window, on the bottom left click the button that says `Open Configuration File`.
+
+In the file it opens, add the line `server=1` then save and exit.
+
+Now close ghost-qt and then relaunch it.
+***
 
 How to run the software
 ***
 
-Start by downloading and extracting the [Latest Release](https://github.com/bleach86/GhostVault_Utility/releases/latest)
+Start by downloading and extracting the [Latest Release](https://github.com/ghost-coin/GhostVault_Utility/releases/latest)
 
-Then make sure that ghost-desktop is running and fully synced with the Ghost network.
+
+Start your ghost wallet and make sure it is synced with the ghost network.
 
 On Windows or Mac, you can just click the executable, GZU.exe or GZU.app,  to launch. 
 
@@ -120,6 +139,6 @@ This means that the entire zap process can take many hours or even days dependin
 
 Since this takes so long, you are able to stop the GZU at any time, and restart it later. It will remember where it left off and pick up from there.
 
-ghost-desktop and GZU need to be running throughout the entire zap process.
+Your ghost wallet and GZU need to be running throughout the entire zap process.
 
 Option 7 is for securely and privately unstaking coins. The GZU will unstake coins by sending them to anon in by grouping all staking coins on the same address together. There will be a random time up to 2.5 hours between unstake transactions.
