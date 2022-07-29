@@ -84,6 +84,7 @@ def isValidCLI():
                 return True
             else:
                 input("ERROR: CLI binary not found! Press Enter to exit.")
+                db().setCliPath("")
                 sys.exit()
 
 
