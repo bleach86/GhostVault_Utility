@@ -37,7 +37,10 @@ def isValidCLI():
         dirs = [name for name in os.listdir(desktopPath) if os.path.isdir(os.path.join(desktopPath, name))]
         if dirs == []:
             if os.path.isfile(cliBin):
-                db().setCliPath(f"{os.getcwd()}")
+                if system == 'Windows':
+                    db().setCliPath(f"{os.getcwd()}\\{cliBin}")
+                else:
+                    db().setCliPath(f"{os.getcwd()}/{cliBin}")
                 return True
             else:
                 input("ERROR: CLI binary not found! Press Enter to exit.")
@@ -139,6 +142,7 @@ def checkWallet():
             return True
         except:
             input(f"ERROR: Valid wallet not found! Press Enter to exit.")
+            db().setWalletName(None)
             sys.exit()
 
 
